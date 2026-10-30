@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Linha do Tempo Interativa do Linux</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600&family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            purple: '#8b5cf6',
+                            purpleDark: '#6d28d9',
+                            blue: '#3b82f6',
+                            cyan: '#06b6d4',
+                            darkBg: '#0f172a',
+                            cardBg: '#1e293b',
+                            border: '#334155'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbar styling */
+        ::-webkit-scrollbar {
+            height: 6px;
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #8b5cf6;
+        }
+
+        /* Hide scrollbar for Chrome, Safari and Opera */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        /* Hide scrollbar for IE, Edge and Firefox */
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+
+        .glow-purple {
+            box-shadow: 0 0 25px -5px rgba(139, 92, 246, 0.4);
+        }
+        .glow-blue {
+            box-shadow: 0 0 25px -5px rgba(59, 130, 246, 0.4);
+        }
+        .text-glow {
+            text-shadow: 0 0 10px rgba(139, 92, 246, 0.6);
+        }
+
+        .milestone-active {
+            transform: scale(1.15);
+            border-color: #8b5cf6 !important;
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.8);
+        }
+
+        /* Glassmorphism */
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans min-h-screen flex flex-col justify-between selection:bg-purple-500 selection:text-white relative overflow-x-hidden">
+
+    <!-- Background Decoration Grid -->
+    <div class="fixed inset-0 bg-[linear-gradient(to_right,#1e293b15_1px,transparent_1px),linear-gradient(to_bottom,#1e293b15_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="relative z-10 border-b border-slate-800 glass sticky top-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4 flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-4">
+            <div class="flex items-center space-x-3 w-full sm:w-auto justify-between sm:justify-start">
+                <div class="flex items-center space-x-3">
+                    <div class="p-2 bg-gradient-to-tr from-purple-600 to-blue-500 rounded-xl shadow-lg animate-pulse">
+                        <i class="fa-brands fa-linux text-2xl sm:text-3xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg sm:text-2xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-blue-400 to-cyan-400">
+                            Linha do Tempo Linux
+                        </h1>
+                        <p class="text-[10px] sm:text-xs text-slate-400 font-mono">Marcos e Distribuições (1991 - 2019)</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Header Action Controls -->
+            <div class="flex items-center justify-end w-full sm:w-auto gap-2 sm:gap-4">
+                <button id="autoplayBtn" onclick="toggleAutoplay()" class="flex-1 sm:flex-none flex items-center justify-center space-x-1.5 sm:space-x-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs sm:text-sm font-semibold transition-all hover:border-purple-500">
+                    <i id="autoplayIcon" class="fa-solid fa-play text-purple-400"></i>
+                    <span id="autoplayText">Apresentação</span>
+                </button>
+                <button onclick="openQuiz()" class="flex-1 sm:flex-none flex items-center justify-center space-x-1.5 sm:space-x-2 px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 text-xs sm:text-sm font-semibold text-white shadow-md transition-all transform active:scale-95">
+                    <i class="fa-solid fa-graduation-cap"></i>
+                    <span>Quiz</span>
+                </button>
+            </div>
+        </div>
+        <!-- Progress Bar for Autoplay -->
+        <div class="w-full bg-slate-800 h-1 hidden" id="progressContainer">
+            <div id="progressBar" class="bg-gradient-to-r from-purple-500 to-cyan-400 h-1 w-0 transition-all duration-100 ease-linear"></div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="relative z-10 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 flex-grow flex flex-col justify-center gap-4 sm:gap-8 w-full">
+
+        <!-- Era Filter Selector Tabs -->
+        <div class="flex justify-center items-center w-full">
+            <div class="inline-flex p-1 bg-slate-900/80 rounded-xl sm:rounded-2xl border border-slate-800 glass w-full sm:w-auto overflow-x-auto no-scrollbar whitespace-nowrap gap-1">
+                <button onclick="filterEra('all')" id="tab-all" class="era-tab flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all duration-300 text-purple-400 bg-slate-800 border border-slate-700/50">
+                    Todas as Eras
+                </button>
+                <button onclick="filterEra(1)" id="tab-1" class="era-tab flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all duration-300 text-slate-400 hover:text-slate-200">
+                    1. Início (91-93)
+                </button>
+                <button onclick="filterEra(2)" id="tab-2" class="era-tab flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all duration-300 text-slate-400 hover:text-slate-200">
+                    2. Expansão (94-04)
+                </button>
+                <button onclick="filterEra(3)" id="tab-3" class="era-tab flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all duration-300 text-slate-400 hover:text-slate-200">
+                    3. Diversificação (05-19)
+                </button>
+            </div>
+        </div>
+
+        <!-- Interactive Horizontal Timeline Slider Area -->
+        <div class="relative glass rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-slate-800 shadow-2xl">
+            <!-- Timeline Line Indicator -->
+            <div class="absolute top-1/2 left-10 right-10 h-0.5 sm:h-1 bg-slate-800 -translate-y-1/2 rounded hidden sm:block"></div>
+            
+            <div id="timelineTrack" class="flex items-center justify-start sm:justify-between overflow-x-auto py-4 sm:py-6 px-1 sm:px-2 gap-4 sm:gap-8 scroll-smooth relative no-scrollbar">
+                <!-- Timeline milestones dynamically injected here -->
+            </div>
+
+            <!-- Navigation Arrow Controls -->
+            <button onclick="prevMilestone()" class="absolute left-1 sm:left-2 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-900/90 border border-slate-700 text-slate-300 hover:text-white hover:border-purple-500 flex items-center justify-center transition-all shadow-lg hover:scale-110 z-20">
+                <i class="fa-solid fa-chevron-left text-xs sm:text-base"></i>
+            </button>
+            <button onclick="nextMilestone()" class="absolute right-1 sm:right-2 top-1/2 -translate-y-1/2 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-slate-900/90 border border-slate-700 text-slate-300 hover:text-white hover:border-purple-500 flex items-center justify-center transition-all shadow-lg hover:scale-110 z-20">
+                <i class="fa-solid fa-chevron-right text-xs sm:text-base"></i>
+            </button>
+        </div>
+
+        <!-- Selected Milestone Display Card -->
+        <div id="detailCard" class="glass rounded-2xl sm:rounded-3xl p-5 sm:p-10 border border-slate-800 transition-all duration-500 transform relative overflow-hidden">
+            <!-- Ambient Glow Effect -->
+            <div id="cardGlow" class="absolute -right-20 -bottom-20 w-80 h-80 bg-purple-600/10 rounded-full blur-3xl pointer-events-none"></div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
+                <!-- Left Details -->
+                <div class="lg:col-span-8 space-y-3 sm:space-y-4 order-2 lg:order-1">
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+                        <span id="milestoneNumber" class="font-mono text-xs sm:text-sm font-bold px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                            #01
+                        </span>
+                        <span id="milestoneYear" class="font-mono text-xs sm:text-sm font-bold px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+                            1991
+                        </span>
+                        <span id="milestoneEra" class="text-[10px] sm:text-xs font-semibold px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+                            Era 1: O Início do Linux
+                        </span>
+                    </div>
+
+                    <h2 id="milestoneTitle" class="text-2xl sm:text-4xl font-extrabold tracking-tight text-white flex items-center gap-3">
+                        Linux 0.01
+                    </h2>
+
+                    <p id="milestoneDescription" class="text-slate-300 text-sm sm:text-lg leading-relaxed pt-1 sm:pt-2">
+                        A primeira versão do kernel do Linux, criada pelo estudante finlandês Linus Torvalds. Inicialmente divulgada na USENET como um projeto de hobby.
+                    </p>
+
+                    <!-- Technical Highlights / Trivia -->
+                    <div class="pt-3 sm:pt-4 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                        <div class="bg-slate-900/60 p-3 sm:p-3.5 rounded-xl border border-slate-800 flex items-start space-x-3">
+                            <i class="fa-solid fa-code text-purple-400 mt-1"></i>
+                            <div>
+                                <h4 class="text-[10px] sm:text-xs uppercase font-bold text-slate-400 tracking-wider">Impacto Histórico</h4>
+                                <p id="milestoneImpact" class="text-xs text-slate-300 mt-0.5">Nascimento do kernel livre POSIX.</p>
+                            </div>
+                        </div>
+                        <div class="bg-slate-900/60 p-3 sm:p-3.5 rounded-xl border border-slate-800 flex items-start space-x-3">
+                            <i class="fa-solid fa-users text-blue-400 mt-1"></i>
+                            <div>
+                                <h4 class="text-[10px] sm:text-xs uppercase font-bold text-slate-400 tracking-wider">Público Alvo</h4>
+                                <p id="milestoneTarget" class="text-xs text-slate-300 mt-0.5">Hacker e entusiastas de sistemas.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Visual Icon Display -->
+                <div class="lg:col-span-4 flex flex-col items-center justify-center p-4 sm:p-6 bg-slate-900/50 rounded-2xl border border-slate-800/80 order-1 lg:order-2">
+                    <div id="iconContainer" class="w-20 h-20 sm:w-36 sm:h-36 rounded-2xl bg-gradient-to-br from-slate-800 to-slate-900 border border-slate-700 flex items-center justify-center text-4xl sm:text-6xl shadow-inner transition-all duration-300">
+                        <i id="distroIcon" class="fa-brands fa-linux text-purple-400"></i>
+                    </div>
+                    <p id="iconLabel" class="text-[10px] sm:text-xs font-mono text-slate-400 mt-2 sm:mt-4 text-center">Kernel Original</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Terminal Interactive Mini-Widget -->
+        <div class="glass rounded-xl sm:rounded-2xl border border-slate-800 overflow-hidden shadow-lg">
+            <div class="bg-slate-900/90 px-3 sm:px-4 py-2 sm:py-2.5 border-b border-slate-800 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-red-500/80"></div>
+                    <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-yellow-500/80"></div>
+                    <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full bg-green-500/80"></div>
+                    <span class="text-[10px] sm:text-xs font-mono text-slate-400 ml-1 sm:ml-2 truncate">bash - tux@linux-timeline:~</span>
+                </div>
+                <span class="text-[9px] sm:text-[10px] font-mono text-slate-500 hidden sm:inline">Digite 'help' para comandos</span>
+            </div>
+            <div id="terminalBody" class="p-3 sm:p-4 font-mono text-xs sm:text-sm text-green-400 bg-slate-950/80 h-28 sm:h-32 overflow-y-auto space-y-1">
+                <div>Bem-vindo ao Terminal da Linha do Tempo do Linux!</div>
+                <div class="text-slate-400">Digite <span class="text-purple-400">'help'</span> para listar os comandos.</div>
+            </div>
+            <div class="bg-slate-950 px-3 sm:px-4 py-2 border-t border-slate-900 flex items-center">
+                <span class="font-mono text-xs text-purple-400 mr-2 shrink-0">tux@linux:~$</span>
+                <input type="text" id="terminalInput" onkeydown="handleTerminalCommand(event)" placeholder="digite um comando..." class="bg-transparent border-none text-xs sm:text-sm font-mono text-slate-200 focus:outline-none w-full">
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Quiz Modal -->
+    <div id="quizModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-50 flex items-center justify-center p-3 sm:p-4 hidden">
+        <div class="glass rounded-2xl sm:rounded-3xl border border-slate-800 max-w-2xl w-full p-5 sm:p-8 shadow-2xl relative overflow-hidden max-h-[90vh] overflow-y-auto">
+            <!-- Close Button -->
+            <button onclick="closeQuiz()" class="absolute top-3 right-3 sm:top-4 sm:right-4 w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <!-- Quiz Header -->
+            <div class="text-center mb-4 sm:mb-6">
+                <div class="inline-flex p-2.5 sm:p-3 bg-purple-500/10 border border-purple-500/30 rounded-2xl mb-2 text-purple-400">
+                    <i class="fa-solid fa-brain text-xl sm:text-2xl"></i>
+                </div>
+                <h3 class="text-xl sm:text-2xl font-bold text-white">Desafio Tux - Quiz de Linux</h3>
+                <p class="text-xs text-slate-400 mt-0.5 sm:mt-1">Teste seu conhecimento sobre o Linux!</p>
+            </div>
+
+            <!-- Quiz Container -->
+            <div id="quizContent">
+                <div class="flex justify-between items-center text-xs font-mono text-slate-400 mb-3 sm:mb-4">
+                    <span id="quizProgress">Pergunta 1 de 5</span>
+                    <span id="quizScore">Pontuação: 0</span>
+                </div>
+
+                <div class="bg-slate-900/80 p-4 sm:p-6 rounded-2xl border border-slate-800 mb-4 sm:mb-6">
+                    <h4 id="quizQuestion" class="text-sm sm:text-lg font-semibold text-slate-100 mb-4">
+                        Pergunta aqui...
+                    </h4>
+                    <div id="quizOptions" class="space-y-2 sm:space-y-2.5">
+                        <!-- Options loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quiz Result View (Hidden initially) -->
+            <div id="quizResult" class="text-center py-4 sm:py-6 hidden space-y-4">
+                <i class="fa-solid fa-trophy text-4xl sm:text-5xl text-yellow-400 animate-bounce"></i>
+                <h4 class="text-xl sm:text-2xl font-bold text-white">Quiz Concluído!</h4>
+                <p id="quizScoreFinal" class="text-slate-300 font-mono text-sm sm:text-lg">Você acertou 5 de 5 perguntas!</p>
+                <button onclick="restartQuiz()" class="px-5 py-2 sm:px-6 sm:py-2.5 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl text-xs sm:text-sm font-bold text-white shadow-lg hover:opacity-90 transition-all">
+                    Tentar Novamente
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="relative z-10 border-t border-slate-800/80 py-4 sm:py-6 text-center text-[10px] sm:text-xs text-slate-400 font-mono px-4">
+        <p>Desenvolvido pelo Analista Flávio Santana • Histórico Linux 1991 - 2019</p>
+    </footer>
+
+    <!-- JavaScript Data and Application Logic -->
+    <script>
+        // Data for the 12 Timeline Items from the infographic
+        const milestones = [
+            {
+                id: 1,
+                number: "01",
+                year: 1991,
+                era: 1,
+                eraName: "1991 – 1993: O início do Linux",
+                title: "Linux 0.01",
+                description: "A primeira versão do kernel do Linux, criada por Linus Torvalds. Foi lançada como um projeto livre e independente na USENET.",
+                impact: "Nascimento do Kernel Linux livre.",
+                target: "Hackers e entusiastas.",
+                icon: "fa-brands fa-linux",
+                color: "#8b5cf6"
+            },
+            {
+                id: 2,
+                number: "02",
+                year: 1992,
+                era: 1,
+                eraName: "1991 – 1993: O início do Linux",
+                title: "Slackware",
+                description: "Uma das primeiras distribuições Linux e a mais antiga ainda em manutenção ativa. Conhecida por sua simplicidade e proximidade com o UNIX.",
+                impact: "Padronizou estruturas de boot e pacotes.",
+                target: "Administradores experientes.",
+                icon: "fa-solid fa-compact-disc",
+                color: "#3b82f6"
+            },
+            {
+                id: 3,
+                number: "03",
+                year: 1993,
+                era: 1,
+                eraName: "1991 – 1993: O início do Linux",
+                title: "Debian",
+                description: "Conhecida pela estabilidade lendária, compromisso com software livre e por ser a base de centenas de outras distribuições populares como o Ubuntu.",
+                impact: "Sistema de pacotes .deb / APT.",
+                target: "Servidores e comunidade FOSS.",
+                icon: "fa-solid fa-swatchbook",
+                color: "#ec4899"
+            },
+            {
+                id: 4,
+                number: "04",
+                year: 1993,
+                era: 1,
+                eraName: "1991 – 1993: O início do Linux",
+                title: "Red Hat",
+                description: "Uma distribuição Linux focada em servidores e sistemas corporativos. Pioneira no modelo de negócios de suporte comercial em software livre.",
+                impact: "Gerenciador RPM / Suporte empresarial.",
+                target: "Empresas e data centers.",
+                icon: "fa-solid fa-hat-wizard",
+                color: "#ef4444"
+            },
+            {
+                id: 5,
+                number: "05",
+                year: 1994,
+                era: 2,
+                eraName: "1994 – 2004: A expansão e consolidação",
+                title: "SUSE",
+                description: "Uma distribuição Linux alemã conhecida por sua facilidade de uso, ferramenta de configuração YaST e forte suporte empresarial.",
+                impact: "Ferramenta gráfica de administração YaST.",
+                target: "Mercado corporativo europeu e global.",
+                icon: "fa-solid fa-dragon",
+                color: "#10b981"
+            },
+            {
+                id: 6,
+                number: "06",
+                year: 1996,
+                era: 2,
+                eraName: "1994 – 2004: A expansão e consolidação",
+                title: "Mandrake",
+                description: "Muito popular por facilitar o uso do Linux no desktop para iniciantes. Atualmente Mandriva, após a fusão entre Mandrake e Conectiva.",
+                impact: "Instalador gráfico amigável.",
+                target: "Usuários domésticos iniciantes.",
+                icon: "fa-solid fa-wand-magic-sparkles",
+                color: "#06b6d4"
+            },
+            {
+                id: 7,
+                number: "07",
+                year: 2003,
+                era: 2,
+                eraName: "1994 – 2004: A expansão e consolidação",
+                title: "Fedora",
+                description: "Distribuição patrocinada pela Red Hat e destinada a usuários finais e DEVs. Famosa por integrar tecnologias e inovações de ponta em primeira mão.",
+                impact: "Inovação tecnológica constante.",
+                target: "Desenvolvedores e entusiastas tech.",
+                icon: "fa-solid fa-f",
+                color: "#3b82f6"
+            },
+            {
+                id: 8,
+                number: "08",
+                year: 2004,
+                era: 2,
+                eraName: "1994 – 2004: A expansão e consolidação",
+                title: "Ubuntu",
+                description: "Foco total na usabilidade e facilidade de instalação. Baseada no Debian, popularizou massivamente o Linux nos computadores pessoais em todo o mundo.",
+                impact: "Popularização do Linux Desktop.",
+                target: "Usuários em geral e desenvolvedores.",
+                icon: "fa-solid fa-circle-nodes",
+                color: "#f97316"
+            },
+            {
+                id: 9,
+                number: "09",
+                year: 2005,
+                era: 3,
+                eraName: "2005 – 2019: Diversificação e novos públicos",
+                title: "CentOS",
+                description: "Baseada nos fontes do Red Hat Enterprise Linux (RHEL), forneceu por anos uma alternativa robusta e gratuita para servidores empresariais.",
+                impact: "Compatibilidade RHEL gratuita.",
+                target: "Servidores web e infraestrutura.",
+                icon: "fa-solid fa-server",
+                color: "#eab308"
+            },
+            {
+                id: 10,
+                number: "10",
+                year: 2011,
+                era: 3,
+                eraName: "2005 – 2019: Diversificação e novos públicos",
+                title: "Linux Mint",
+                description: "Conhecida por sua interface de usuário elegante e amigável (Cinnamon) e excelente suporte pronto para uso com codecs de mídia.",
+                impact: "Interface Cinnamon & transição suave do Windows.",
+                target: "Usuários vindo de outros SOs.",
+                icon: "fa-solid fa-leaf",
+                color: "#22c55e"
+            },
+            {
+                id: 11,
+                number: "11",
+                year: 2013,
+                era: 3,
+                eraName: "2005 – 2019: Diversificação e novos públicos",
+                title: "Kali Linux",
+                description: "Voltado principalmente para auditoria de segurança, testes de invasão (pentest) e segurança de computadores em geral. Recheado de ferramentas especializadas.",
+                impact: "Padrão da indústria em Segurança e Pentest.",
+                target: "Especialistas em Cibersegurança.",
+                icon: "fa-solid fa-shield-halved",
+                color: "#0284c7"
+            },
+            {
+                id: 12,
+                number: "12",
+                year: 2019,
+                era: 3,
+                eraName: "2005 – 2019: Diversificação e novos públicos",
+                title: "Pop!_OS",
+                description: "Desenvolvido pela própria fabricante de hardware System76. Focado em produtividade, criadores de conteúdo, jogos e integrações nativas com placas GPU.",
+                impact: "Excelente suporte a GPUs e Auto-Tiling.",
+                target: "Gamers, criadores e Devs.",
+                icon: "fa-solid fa-laptop-code",
+                color: "#06b6d4"
+            }
+        ];
+
+        // State variables
+        let currentIndex = 0;
+        let autoplayActive = false;
+        let autoplayInterval = null;
+        let progressInterval = null;
+        let currentEraFilter = 'all';
+
+        // Initialize application on page load
+        window.onload = function() {
+            renderTimelineTrack();
+            selectMilestone(0);
+            setupTouchAndKeyboardEvents();
+        };
+
+        // Render Timeline items into horizontal container
+        function renderTimelineTrack() {
+            const track = document.getElementById('timelineTrack');
+            track.innerHTML = '';
+
+            milestones.forEach((item, index) => {
+                if (currentEraFilter !== 'all' && item.era !== currentEraFilter) {
+                    return; // Filter out non-matching items
+                }
+
+                const itemBtn = document.createElement('button');
+                itemBtn.id = `milestone-btn-${index}`;
+                itemBtn.onclick = () => {
+                    stopAutoplay();
+                    selectMilestone(index);
+                };
+                itemBtn.className = `flex-shrink-0 flex flex-col items-center group transition-all duration-300 focus:outline-none p-1 sm:p-2`;
+                
+                itemBtn.innerHTML = `
+                    <span class="text-[9px] sm:text-[10px] font-mono text-slate-400 group-hover:text-purple-400 transition-colors mb-1">
+                        ${item.year}
+                    </span>
+                    <div class="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-slate-900 border border-slate-700 flex flex-col items-center justify-center relative transition-all duration-300 group-hover:border-purple-500 group-hover:scale-105 shadow-md">
+                        <span class="text-[10px] sm:text-xs font-mono font-bold text-slate-300">${item.number}</span>
+                        <i class="${item.icon} text-xs sm:text-sm text-purple-400 mt-0.5"></i>
+                    </div>
+                    <span class="text-[10px] sm:text-[11px] font-medium text-slate-300 mt-1 sm:mt-1.5 max-w-[70px] sm:max-w-[80px] truncate text-center">
+                        ${item.title}
+                    </span>
+                `;
+
+                track.appendChild(itemBtn);
+            });
+        }
+
+        // Select and highlight a specific milestone
+        function selectMilestone(index) {
+            currentIndex = index;
+            const data = milestones[index];
+
+            // Update Active UI classes on buttons
+            milestones.forEach((_, idx) => {
+                const btn = document.getElementById(`milestone-btn-${idx}`);
+                if (btn) {
+                    const circle = btn.querySelector('div');
+                    if (idx === index) {
+                        circle.classList.add('milestone-active');
+                    } else {
+                        circle.classList.remove('milestone-active');
+                    }
+                }
+            });
+
+            // Update Card Details
+            document.getElementById('milestoneNumber').innerText = `#${data.number}`;
+            document.getElementById('milestoneYear').innerText = data.year;
+            document.getElementById('milestoneEra').innerText = data.eraName;
+            document.getElementById('milestoneTitle').innerText = data.title;
+            document.getElementById('milestoneDescription').innerText = data.description;
+            document.getElementById('milestoneImpact').innerText = data.impact;
+            document.getElementById('milestoneTarget').innerText = data.target;
+
+            // Update Visual Icon
+            const iconElem = document.getElementById('distroIcon');
+            iconElem.className = `${data.icon} text-purple-400`;
+            document.getElementById('iconLabel').innerText = `${data.title} (${data.year})`;
+
+            // Scroll milestone button into center view
+            const selectedBtn = document.getElementById(`milestone-btn-${index}`);
+            if (selectedBtn) {
+                selectedBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            }
+
+            // Append log to interactive terminal
+            appendTerminalLog(`Atualmente visualizando: [${data.number}] ${data.title} (${data.year})`);
+        }
+
+        // Navigation Next / Prev
+        function nextMilestone() {
+            let nextIdx = currentIndex + 1;
+            if (nextIdx >= milestones.length) nextIdx = 0;
+            selectMilestone(nextIdx);
+        }
+
+        function prevMilestone() {
+            let prevIdx = currentIndex - 1;
+            if (prevIdx < 0) prevIdx = milestones.length - 1;
+            selectMilestone(prevIdx);
+        }
+
+        // Filter by Era
+        function filterEra(era) {
+            stopAutoplay();
+            currentEraFilter = era;
+
+            // Update Tab UI Styles
+            document.querySelectorAll('.era-tab').forEach(tab => {
+                tab.className = "era-tab flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all duration-300 text-slate-400 hover:text-slate-200";
+            });
+
+            const activeTab = document.getElementById(`tab-${era}`);
+            if (activeTab) {
+                activeTab.className = "era-tab flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm font-medium transition-all duration-300 text-purple-400 bg-slate-800 border border-slate-700/50 shadow";
+            }
+
+            renderTimelineTrack();
+
+            // Select first visible item in filtered view
+            const firstMatching = milestones.findIndex(m => era === 'all' || m.era === era);
+            if (firstMatching !== -1) {
+                selectMilestone(firstMatching);
+            }
+        }
+
+        // Autoplay presentation mode
+        function toggleAutoplay() {
+            if (autoplayActive) {
+                stopAutoplay();
+            } else {
+                startAutoplay();
+            }
+        }
+
+        function startAutoplay() {
+            autoplayActive = true;
+            document.getElementById('autoplayText').innerText = "Pausar";
+            document.getElementById('autoplayIcon').className = "fa-solid fa-pause text-cyan-400";
+            document.getElementById('progressContainer').classList.remove('hidden');
+
+            let progress = 0;
+            const progressBar = document.getElementById('progressBar');
+            
+            clearInterval(autoplayInterval);
+            clearInterval(progressInterval);
+
+            progressInterval = setInterval(() => {
+                progress += 2;
+                progressBar.style.width = `${progress}%`;
+                if (progress >= 100) {
+                    progress = 0;
+                    nextMilestone();
+                }
+            }, 100);
+        }
+
+        function stopAutoplay() {
+            autoplayActive = false;
+            document.getElementById('autoplayText').innerText = "Apresentação";
+            document.getElementById('autoplayIcon').className = "fa-solid fa-play text-purple-400";
+            document.getElementById('progressContainer').classList.add('hidden');
+            document.getElementById('progressBar').style.width = '0%';
+            clearInterval(autoplayInterval);
+            clearInterval(progressInterval);
+        }
+
+        // Interactive Terminal Logic
+        function handleTerminalCommand(e) {
+            if (e.key === 'Enter') {
+                const input = e.target.value.trim().toLowerCase();
+                e.target.value = '';
+
+                if (!input) return;
+
+                appendTerminalLog(`> ${input}`, 'text-purple-300');
+
+                if (input === 'help') {
+                    appendTerminalLog('Comandos disponíveis: ls, cat [nº], era [1-3], clear, info');
+                } else if (input === 'ls') {
+                    const list = milestones.map(m => `${m.number}:${m.title}`).join(' | ');
+                    appendTerminalLog(list, 'text-slate-300');
+                } else if (input.startsWith('cat ')) {
+                    const num = input.split(' ')[1];
+                    const found = milestones.find(m => m.number === num || m.number === num.padStart(2, '0'));
+                    if (found) {
+                        selectMilestone(found.id - 1);
+                    } else {
+                        appendTerminalLog(`Marco '${num}' não encontrado. Use de 01 a 12.`, 'text-red-400');
+                    }
+                } else if (input.startsWith('era ')) {
+                    const eraNum = parseInt(input.split(' ')[1]);
+                    if ([1, 2, 3].includes(eraNum)) {
+                        filterEra(eraNum);
+                    } else {
+                        appendTerminalLog('Eras válidas: 1, 2 ou 3.', 'text-red-400');
+                    }
+                } else if (input === 'clear') {
+                    document.getElementById('terminalBody').innerHTML = '';
+                } else if (input === 'info') {
+                    appendTerminalLog('Linha do Tempo Linux v2.0 - Desenvolvida para aprendizado dinâmico.', 'text-cyan-300');
+                } else {
+                    appendTerminalLog(`Comando não reconhecido: '${input}'. Digite 'help'.`, 'text-red-400');
+                }
+            }
+        }
+
+        function appendTerminalLog(msg, colorClass = 'text-green-400') {
+            const body = document.getElementById('terminalBody');
+            const div = document.createElement('div');
+            div.className = colorClass;
+            div.innerText = msg;
+            body.appendChild(div);
+            body.scrollTop = body.scrollHeight;
+        }
+
+        // Touch Swipe & Keyboard Navigation
+        function setupTouchAndKeyboardEvents() {
+            let touchStartX = 0;
+            let touchEndX = 0;
+            const detailCard = document.getElementById('detailCard');
+
+            detailCard.addEventListener('touchstart', e => {
+                touchStartX = e.changedTouches[0].screenX;
+            }, { passive: true });
+
+            detailCard.addEventListener('touchend', e => {
+                touchEndX = e.changedTouches[0].screenX;
+                handleSwipe();
+            }, { passive: true });
+
+            function handleSwipe() {
+                const threshold = 50; // Mínimo de arraste
+                if (touchEndX < touchStartX - threshold) {
+                    nextMilestone(); // Deslizar para esquerda
+                }
+                if (touchEndX > touchStartX + threshold) {
+                    prevMilestone(); // Deslizar para direita
+                }
+            }
+
+            // Setas do teclado
+            document.addEventListener('keydown', e => {
+                if (document.activeElement.tagName === 'INPUT') return; // Ignora se o usuário estiver digitando no terminal
+                if (e.key === 'ArrowRight') nextMilestone();
+                if (e.key === 'ArrowLeft') prevMilestone();
+            });
+        }
+
+        // Quiz Questions Data
+        const quizQuestions = [
+            {
+                question: "Quem foi o criador da primeira versão do kernel Linux em 1991?",
+                options: ["Richard Stallman", "Linus Torvalds", "Steve Jobs", "Ken Thompson"],
+                answer: 1
+            },
+            {
+                question: "Qual das seguintes distribuições é conhecida por sua lendária estabilidade e base do Ubuntu?",
+                options: ["Red Hat", "Slackware", "Debian", "Mandriva"],
+                answer: 2
+            },
+            {
+                question: "Qual distribuição lançada em 2004 focou em transformar o Linux acessível para o usuário final de desktop?",
+                options: ["SUSE", "Ubuntu", "Fedora", "Kali Linux"],
+                answer: 1
+            },
+            {
+                question: "A distribuição Kali Linux (2013) é voltada principalmente para qual segmento?",
+                options: ["Jogos e eSports", "Edição de Vídeo", "Auditoria e Segurança de Computadores", "Servidores de E-commerce"],
+                answer: 2
+            },
+            {
+                question: "Qual distribuição foi criada pela fabricante de hardware System76 em 2019?",
+                options: ["Pop!_OS", "Linux Mint", "CentOS", "Fedora"],
+                answer: 0
+            }
+        ];
+
+        let currentQuizIndex = 0;
+        let score = 0;
+
+        function openQuiz() {
+            stopAutoplay();
+            document.getElementById('quizModal').classList.remove('hidden');
+            currentQuizIndex = 0;
+            score = 0;
+            document.getElementById('quizContent').classList.remove('hidden');
+            document.getElementById('quizResult').classList.add('hidden');
+            loadQuizQuestion();
+        }
+
+        function closeQuiz() {
+            document.getElementById('quizModal').classList.add('hidden');
+        }
+
+        function loadQuizQuestion() {
+            const q = quizQuestions[currentQuizIndex];
+            document.getElementById('quizProgress').innerText = `Pergunta ${currentQuizIndex + 1} de ${quizQuestions.length}`;
+            document.getElementById('quizScore').innerText = `Pontuação: ${score}`;
+            document.getElementById('quizQuestion').innerText = q.question;
+
+            const optsContainer = document.getElementById('quizOptions');
+            optsContainer.innerHTML = '';
+
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.onclick = () => checkAnswer(idx);
+                btn.className = "w-full text-left p-3 sm:p-3.5 rounded-xl bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700/80 text-xs sm:text-sm font-medium text-slate-200 transition-all hover:border-purple-500 focus:outline-none";
+                btn.innerText = opt;
+                optsContainer.appendChild(btn);
+            });
+        }
+
+        function checkAnswer(selectedIdx) {
+            if (selectedIdx === quizQuestions[currentQuizIndex].answer) {
+                score++;
+            }
+            currentQuizIndex++;
+            if (currentQuizIndex < quizQuestions.length) {
+                loadQuizQuestion();
+            } else {
+                showQuizResults();
+            }
+        }
+
+        function showQuizResults() {
+            document.getElementById('quizContent').classList.add('hidden');
+            document.getElementById('quizResult').classList.remove('hidden');
+            document.getElementById('quizScoreFinal').innerText = `Você acertou ${score} de ${quizQuestions.length} perguntas!`;
+        }
+
+        function restartQuiz() {
+            openQuiz();
+        }
+    </script>
+</body>
+</html>
